@@ -7,6 +7,7 @@ import com.teamsparta.courseregistration.domain.course.model.Course
 import com.teamsparta.courseregistration.domain.course.model.CourseStatus
 import com.teamsparta.courseregistration.domain.course.model.toResponse
 import com.teamsparta.courseregistration.domain.course.repository.CourseRepository
+import com.teamsparta.courseregistration.domain.course.repository.QueryDslCourseRepository
 import com.teamsparta.courseregistration.domain.courseapplication.dto.ApplyCourseRequest
 import com.teamsparta.courseregistration.domain.courseapplication.dto.CourseApplicationResponse
 import com.teamsparta.courseregistration.domain.courseapplication.dto.UpdateApplicationStatusRequest
@@ -22,6 +23,8 @@ import com.teamsparta.courseregistration.domain.lecture.model.Lecture
 import com.teamsparta.courseregistration.domain.lecture.model.toResponse
 import com.teamsparta.courseregistration.domain.lecture.repository.LectureRepository
 import com.teamsparta.courseregistration.domain.user.repository.UserRepository
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -30,10 +33,26 @@ import kotlin.IllegalStateException
 @Service
 class CourseServiceImpl(
     private val courseRepository: CourseRepository,
+    private val queryDslCourseRepository: QueryDslCourseRepository,
     private val lectureRepository: LectureRepository,
     private val courseApplicationRepository: CourseApplicationRepository,
     private val userRepository: UserRepository,
 ) : CourseService {
+    override fun searchCourseList(title: String): List<CourseResponse> {
+        return queryDslCourseRepository.searchCourseListByTitle(title).map { it.toResponse() }
+    }
+
+    override fun getPaginatedCourseList(pageable: Pageable, status: String?): Page<CourseResponse>? {
+        val courseStatus = when (status) {
+            "OPEN" -> CourseStatus.OPEN
+            "CLOSED" -> CourseStatus.CLOSED
+            null -> null
+            else -> throw java.lang.IllegalArgumentException("The status is invalid")
+        }
+
+        return courseRepository.findByPageableAndStatus(pageable, courseStatus).map { it.toResponse() }
+    }
+
     override fun getAllCourseList(): List<CourseResponse> {
         return courseRepository.findAll().map { it.toResponse() }
     }
